@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BlockPy Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b14; --surface:#0e1220; --card:#131929; --border:#1e2a42;
+  --accent:#00d4ff; --accent2:#7c3aed; --green:#10b981; --yellow:#f59e0b;
+  --red:#ef4444; --muted:#4b5e7a; --text:#d1d9f0; --text2:#8899b8;
+  --mono:'JetBrains Mono',monospace;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+
+/* NAV */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{font-family:'Sora',sans-serif;font-size:20px;font-weight:700;color:var(--accent);letter-spacing:-0.5px}
+.nav-status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 60px)}
+
+/* SIDEBAR */
+aside{background:var(--surface);border-right:1px solid var(--border);padding:24px 14px;display:flex;flex-direction:column;gap:4px}
+.aside-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;padding:10px 12px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:9px;font-size:14px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{background:#0d1f3c;color:var(--accent)}
+.nav-item .icon{font-size:16px;width:22px}
+
+/* MAIN */
+main{padding:28px 32px;overflow-y:auto}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat.blue::before{background:var(--accent)}
+.stat.purple::before{background:var(--accent2)}
+.stat.green::before{background:var(--green)}
+.stat.yellow::before{background:var(--yellow)}
+.stat-label{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:8px}
+.stat-val{font-family:'Sora',sans-serif;font-size:30px;font-weight:700;line-height:1}
+.stat.blue   .stat-val{color:var(--accent)}
+.stat.purple .stat-val{color:var(--accent2)}
+.stat.green  .stat-val{color:var(--green)}
+.stat.yellow .stat-val{color:var(--yellow)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:6px}
+
+/* SECTION */
+.section-title{font-family:'Sora',sans-serif;font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.section-title .tag{font-size:11px;font-weight:600;background:var(--card);border:1px solid var(--border);padding:3px 10px;border-radius:20px;color:var(--text2);font-family:'Inter',sans-serif}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:28px}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--card);padding:12px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+tbody td{padding:13px 16px;font-size:13px;border-bottom:1px solid rgba(30,42,66,.5)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+.hash{font-family:var(--mono);font-size:12px;color:var(--accent);cursor:pointer}
+.hash:hover{text-decoration:underline}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-reward{background:#0d1f3c;color:var(--accent)}
+.badge-transfer{background:#1a0d3c;color:#a78bfa}
+.badge-valid{background:#0d2b1f;color:var(--green)}
+.badge-invalid{background:#2b0d0d;color:var(--red)}
+
+/* FORMS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+.form-row{display:grid;gap:14px;margin-bottom:16px}
+.form-row.two{grid-template-columns:1fr 1fr}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+input,select,textarea{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 14px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-primary{background:var(--accent);color:#000}
+.btn-primary:hover{background:#00b8d9;transform:translateY(-1px)}
+.btn-secondary{background:var(--accent2);color:#fff}
+.btn-secondary:hover{background:#6d28d9}
+.btn-ghost{background:var(--card);color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--text)}
+
+/* PAGE TITLES */
+.page-title{font-family:'Sora',sans-serif;font-size:22px;font-weight:700;margin-bottom:22px}
+
+/* BLOCK EXPLORER CHAIN VIZ */
+.chain-viz{display:flex;align-items:center;gap:0;overflow-x:auto;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:28px}
+.chain-block{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;min-width:160px;flex-shrink:0;transition:all .2s;cursor:pointer}
+.chain-block:hover{border-color:var(--accent);transform:translateY(-3px)}
+.chain-block.genesis{border-color:var(--green)}
+.cb-index{font-family:'Sora',sans-serif;font-size:11px;color:var(--text2);margin-bottom:4px}
+.cb-hash{font-family:var(--mono);font-size:10px;color:var(--accent);margin-bottom:8px}
+.cb-txns{font-size:12px;color:var(--text2)}
+.chain-arrow{color:var(--muted);font-size:20px;margin:0 8px;flex-shrink:0}
+
+/* WALLET CARD */
+.wallet-list{display:grid;gap:12px}
+.wallet-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:16px}
+.wallet-icon{font-size:32px;flex-shrink:0}
+.wallet-info{flex:1;min-width:0}
+.wallet-label{font-weight:600;font-size:15px}
+.wallet-addr{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wallet-bal{font-family:'Sora',sans-serif;font-size:20px;font-weight:700;color:var(--green);text-align:right;flex-shrink:0}
+.wallet-bal span{display:block;font-size:10px;font-weight:500;color:var(--muted);text-align:right;font-family:'Inter',sans-serif}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px}
+.toast-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 18px;font-size:14px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.5);animation:toastIn .25s ease;max-width:320px}
+.toast-item.success{border-left:3px solid var(--green)}
+.toast-item.error{border-left:3px solid var(--red)}
+.toast-item.info{border-left:3px solid var(--accent)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* MINING ANIMATION */
+.mining-indicator{display:none;align-items:center;gap:10px;color:var(--yellow);font-size:14px;font-weight:600;margin-bottom:16px}
+.mining-indicator.show{display:flex}
+.mine-spin{animation:spin .6s linear infinite;font-size:20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px;color:var(--muted)}
+.empty .ei{font-size:40px;margin-bottom:10px}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:var(--card);border-radius:10px;padding:4px;margin-bottom:20px;width:fit-content}
+.tab{padding:8px 18px;border:none;background:transparent;color:var(--text2);font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;transition:all .15s;font-family:inherit}
+.tab.active{background:var(--accent);color:#000}
+
+/* CODE OUTPUT */
+.code-out{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;color:#7dd3fc;overflow-x:auto;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .app{grid-template-columns:1fr}
+  aside{display:none}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  main{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">⛓ BlockPy Explorer</div>
+  <div class="nav-status">
+    <div class="dot"></div>
+    <span id="nav-height">Height: —</span> &nbsp;|&nbsp;
+    <span id="nav-valid" style="color:var(--green)">Valid Chain</span>
+  </div>
+</nav>
+
+<div class="app">
+<!-- SIDEBAR -->
+<aside>
+  <div class="aside-label">Explorer</div>
+  <button class="nav-item active" onclick="showPage('dashboard',this)"><span class="icon">📊</span> Dashboard</button>
+  <button class="nav-item" onclick="showPage('chain',this)"><span class="icon">⛓</span> Blockchain</button>
+  <button class="nav-item" onclick="showPage('transactions',this)"><span class="icon">↔️</span> Transactions</button>
+  <button class="nav-item" onclick="showPage('mine',this)"><span class="icon">⛏️</span> Mine Block</button>
+
+  <div class="aside-label" style="margin-top:16px">Wallet</div>
+  <button class="nav-item" onclick="showPage('wallets',this)"><span class="icon">👛</span> Wallets</button>
+  <button class="nav-item" onclick="showPage('send',this)"><span class="icon">📤</span> Send Coins</button>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main id="main-content">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard">
+  <div class="page-title">Dashboard</div>
+  <div class="stats-grid">
+    <div class="stat blue"><div class="stat-label">Chain Height</div><div class="stat-val" id="s-height">—</div><div class="stat-sub">Mined blocks</div></div>
+    <div class="stat purple"><div class="stat-label">Transactions</div><div class="stat-val" id="s-txns">—</div><div class="stat-sub">All-time</div></div>
+    <div class="stat green"><div class="stat-label">Total Supply</div><div class="stat-val" id="s-supply">—</div><div class="stat-sub">Coins in circulation</div></div>
+    <div class="stat yellow"><div class="stat-label">Pending</div><div class="stat-val" id="s-pending">—</div><div class="stat-sub">In mempool</div></div>
+  </div>
+
+  <div class="section-title">Chain Visualization <span class="tag" id="chain-tag">0 blocks</span></div>
+  <div class="chain-viz" id="chain-viz">Loading…</div>
+
+  <div class="section-title">Recent Blocks</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Hash</th><th>Transactions</th><th>Nonce</th><th>Timestamp</th></tr></thead>
+      <tbody id="recent-blocks"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CHAIN -->
+<div id="page-chain" style="display:none">
+  <div class="page-title">Full Blockchain</div>
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;gap:14px;align-items:center">
+      <div>Chain Valid: <strong id="chain-valid-badge">—</strong></div>
+      <div>Height: <strong id="chain-height-full">—</strong></div>
+      <div>Difficulty: <strong id="chain-diff">—</strong></div>
+      <button class="btn btn-ghost" style="margin-left:auto" onclick="loadChain()">↻ Refresh</button>
+    </div>
+  </div>
+  <div id="chain-blocks"></div>
+</div>
+
+<!-- TRANSACTIONS -->
+<div id="page-transactions" style="display:none">
+  <div class="page-title">Transactions</div>
+  <div class="card">
+    <label>Filter by address (leave blank for all)</label>
+    <div style="display:flex;gap:10px">
+      <input type="text" id="tx-filter-addr" placeholder="Wallet address…"/>
+      <button class="btn btn-primary" onclick="loadTransactions()">Search</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Block</th><th>Sender</th><th>Recipient</th><th>Amount</th><th>Type</th><th>Memo</th></tr></thead>
+      <tbody id="tx-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MINE -->
+<div id="page-mine" style="display:none">
+  <div class="page-title">⛏️ Mine a Block</div>
+  <div class="card">
+    <div class="form-row">
+      <div>
+        <label>Miner Wallet Address</label>
+        <select id="mine-addr">
+          <option value="">Select wallet…</option>
+        </select>
+      </div>
+    </div>
+    <div class="mining-indicator" id="mining-anim">
+      <span class="mine-spin">⚙️</span> Mining… computing Proof-of-Work
+    </div>
+    <button class="btn btn-secondary" onclick="mineBlock()">⛏️ Mine Block</button>
+    <div id="mine-result" style="margin-top:20px"></div>
+  </div>
+</div>
+
+<!-- WALLETS -->
+<div id="page-wallets" style="display:none">
+  <div class="page-title">👛 Wallets</div>
+  <div class="card" style="margin-bottom:20px">
+    <div class="form-row two">
+      <div><label>Wallet Label</label><input type="text" id="new-wallet-label" placeholder="e.g. Alice"/></div>
+      <div style="display:flex;align-items:flex-end"><button class="btn btn-primary" onclick="createWallet()">+ Create Wallet</button></div>
+    </div>
+  </div>
+  <div class="wallet-list" id="wallet-list">Loading…</div>
+</div>
+
+<!-- SEND -->
+<div id="page-send" style="display:none">
+  <div class="page-title">📤 Send Coins</div>
+  <div class="card">
+    <div class="form-row two">
+      <div><label>From (Sender Address)</label>
+        <select id="send-from">
+          <option value="">Select wallet…</option>
+        </select>
+      </div>
+      <div><label>To (Recipient Address)</label><input type="text" id="send-to" placeholder="Recipient address…"/></div>
+    </div>
+    <div class="form-row two">
+      <div><label>Amount (coins)</label><input type="number" id="send-amount" placeholder="0.00" step="0.01" min="0.01"/></div>
+      <div><label>Memo (optional)</label><input type="text" id="send-memo" placeholder="What's it for?"/></div>
+    </div>
+    <button class="btn btn-primary" onclick="sendTransaction()">Send →</button>
+    <div id="send-result" style="margin-top:16px"></div>
+  </div>
+
+  <div class="section-title" style="margin-top:10px">Pending Transactions (Mempool)</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Sender</th><th>Recipient</th><th>Amount</th><th>Memo</th></tr></thead>
+      <tbody id="pending-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:5000';
+let statsData = {};
+
+/* ── Toast ─────────────────────────────────────────────── */
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+/* ── API ───────────────────────────────────────────────── */
+async function apiFetch(path, opts={}) {
+  try {
+    const r = await fetch(API + path, { headers:{'Content-Type':'application/json'}, ...opts });
+    return r.ok ? r.json() : null;
+  } catch { return null; }
+}
+
+/* ── Page nav ──────────────────────────────────────────── */
+function showPage(id, btn) {
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display='none');
+  document.getElementById('page-' + id).style.display = '';
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const loaders = {
+    dashboard:    loadDashboard,
+    chain:        loadChain,
+    transactions: loadTransactions,
+    mine:         loadMineWallets,
+    wallets:      loadWallets,
+    send:         loadSendPage,
+  };
+  if (loaders[id]) loaders[id]();
+}
+
+function shortHash(h) { return h ? h.slice(0,16)+'…' : '—'; }
+function ts(t) {
+  return new Date(t * 1000).toLocaleString('en-IN', {
+    day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'
+  });
+}
+
+/* ── Dashboard ─────────────────────────────────────────── */
+async function loadDashboard() {
+  const stats = await apiFetch('/stats');
+  if (!stats) { toast('Cannot connect to API. Start: python api/app.py', 'error'); return; }
+  statsData = stats;
+  document.getElementById('s-height').textContent  = stats.chain_height;
+  document.getElementById('s-txns').textContent    = stats.total_transactions;
+  document.getElementById('s-supply').textContent  = stats.total_supply.toFixed(2);
+  document.getElementById('s-pending').textContent = stats.pending_transactions;
+  document.getElementById('nav-height').textContent = 'Height: ' + stats.chain_height;
+  const validEl = document.getElementById('nav-valid');
+  validEl.textContent = stats.is_valid ? 'Valid Chain ✓' : 'INVALID ✗';
+  validEl.style.color = stats.is_valid ? 'var(--green)' : 'var(--red)';
+
+  const chain = await apiFetch('/chain');
+  if (!chain) return;
+  renderChainViz(chain.chain);
+  renderRecentBlocks(chain.chain.slice().reverse().slice(0, 6));
+  document.getElementById('chain-tag').textContent = chain.length + ' blocks';
+}
+
+function renderChainViz(blocks) {
+  const viz = document.getElementById('chain-viz');
+  viz.innerHTML = blocks.map((b, i) => `
+    <div class="chain-block ${b.index===0?'genesis':''}" title="Block #${b.index}">
+      <div class="cb-index">${b.index === 0 ? 'GENESIS' : 'BLOCK #'+b.index}</div>
+      <div class="cb-hash">${shortHash(b.hash)}</div>
+      <div class="cb-txns">${b.transactions.length} tx${b.transactions.length!==1?'s':''}</div>
+    </div>
+    ${i < blocks.length-1 ? '<div class="chain-arrow">→</div>' : ''}
+  `).join('');
+}
+
+function renderRecentBlocks(blocks) {
+  document.getElementById('recent-blocks').innerHTML = blocks.map(b => `
+    <tr>
+      <td><strong>${b.index}</strong></td>
+      <td><span class="hash">${shortHash(b.hash)}</span></td>
+      <td>${b.transactions.length}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${b.nonce}</td>
+      <td style="font-size:12px;color:var(--text2)">${ts(b.timestamp)}</td>
+    </tr>
+  `).join('');
+}
+
+/* ── Chain page ────────────────────────────────────────── */
+async function loadChain() {
+  const data = await apiFetch('/chain');
+  if (!data) return;
+  const valid = await apiFetch('/chain/valid');
+  document.getElementById('chain-height-full').textContent = data.length;
+  document.getElementById('chain-diff').textContent = data.difficulty;
+  document.getElementById('chain-valid-badge').innerHTML =
+    valid && valid.valid
+      ? '<span class="badge badge-valid">✓ Valid</span>'
+      : '<span class="badge badge-invalid">✗ Invalid</span>';
+
+  document.getElementById('chain-blocks').innerHTML = data.chain.slice().reverse().map(b => `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <span style="font-family:'Sora',sans-serif;font-size:17px;font-weight:700">${b.index === 0 ? 'Genesis Block' : 'Block #' + b.index}</span>
+          ${b.index === 0 ? '<span class="badge badge-valid" style="margin-left:8px">GENESIS</span>' : ''}
+        </div>
+        <span style="font-size:12px;color:var(--text2)">${ts(b.timestamp)}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px">
+        <div><span style="color:var(--text2)">Hash: </span><span class="hash">${b.hash}</span></div>
+        <div><span style="color:var(--text2)">Prev: </span><span class="hash">${shortHash(b.previous_hash)}</span></div>
+        <div><span style="color:var(--text2)">Nonce: </span><span style="font-family:var(--mono)">${b.nonce}</span></div>
+        <div><span style="color:var(--text2)">Transactions: </span>${b.transactions.length}</div>
+      </div>
+      ${b.transactions.length ? `
+      <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr style="color:var(--text2)"><th style="text-align:left;padding:6px 8px">Sender</th><th style="text-align:left;padding:6px 8px">Recipient</th><th style="text-align:right;padding:6px 8px">Amount</th><th style="text-align:left;padding:6px 8px">Type</th></tr></thead>
+        <tbody>${b.transactions.map(tx => `
+          <tr style="border-top:1px solid var(--border)">
+            <td style="padding:6px 8px;font-family:var(--mono)">${tx.sender === 'NETWORK' ? '🌐 NETWORK' : shortHash(tx.sender)}</td>
+            <td style="padding:6px 8px;font-family:var(--mono)">${shortHash(tx.recipient)}</td>
+            <td style="padding:6px 8px;text-align:right;color:var(--green);font-weight:600">${tx.amount.toFixed(2)}</td>
+            <td style="padding:6px 8px"><span class="badge badge-${tx.type}">${tx.type}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : '<div style="color:var(--muted);font-size:13px">No transactions</div>'}
+    </div>
+  `).join('');
+}
+
+/* ── Transactions ──────────────────────────────────────── */
+async function loadTransactions() {
+  const addr = document.getElementById('tx-filter-addr')?.value?.trim();
+  const path = addr ? `/transactions/${addr}` : '/chain';
+  const data = await apiFetch(path);
+  let txns = [];
+
+  if (addr && data) {
+    txns = data.transactions;
+  } else if (data && data.chain) {
+    data.chain.forEach(b =>
+      b.transactions.forEach(tx => txns.push({ ...tx, block_index: b.index }))
+    );
+    txns.reverse();
+  }
+
+  document.getElementById('tx-tbody').innerHTML = txns.length ? txns.map(tx => `
+    <tr>
+      <td>${tx.block_index ?? '—'}</td>
+      <td><span class="hash">${tx.sender === 'NETWORK' ? '🌐 NETWORK' : shortHash(tx.sender)}</span></td>
+      <td><span class="hash">${shortHash(tx.recipient)}</span></td>
+      <td style="color:var(--green);font-weight:600">${Number(tx.amount).toFixed(2)}</td>
+      <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
+      <td style="color:var(--text2);font-size:12px">${tx.memo || '—'}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty"><div class="ei">📭</div>No transactions found</td></tr>';
+}
+
+/* ── Mine ──────────────────────────────────────────────── */
+async function loadMineWallets() {
+  const data = await apiFetch('/wallets');
+  const sel  = document.getElementById('mine-addr');
+  sel.innerHTML = '<option value="">Select wallet…</option>';
+  if (data) data.wallets.forEach(w =>
+    sel.innerHTML += `<option value="${w.address}">${w.label || 'unknown'} — ${w.address.slice(0,12)}…</option>`
+  );
+}
+
+async function mineBlock() {
+  const addr = document.getElementById('mine-addr').value;
+  if (!addr) { toast('Select a miner wallet', 'error'); return; }
+  document.getElementById('mining-anim').classList.add('show');
+  document.getElementById('mine-result').innerHTML = '';
+  const data = await apiFetch('/mine', {
+    method: 'POST',
+    body: JSON.stringify({ miner_address: addr }),
+  });
+  document.getElementById('mining-anim').classList.remove('show');
+  if (data) {
+    toast(`Block #${data.block.index} mined! Nonce: ${data.block.nonce}`, 'success');
+    document.getElementById('mine-result').innerHTML = `
+      <div class="code-out">${JSON.stringify(data.block, null, 2)}</div>`;
+    loadDashboard();
+  } else { toast('Mining failed', 'error'); }
+}
+
+/* ── Wallets ───────────────────────────────────────────── */
+const WALLET_ICONS = ['🦊','🐼','🦁','🤖','🧙','👩‍💻','👨‍💻','🎩','🦸','🧛','⚡','🌟'];
+let iconIdx = 0;
+
+async function loadWallets() {
+  const data = await apiFetch('/wallets');
+  const el   = document.getElementById('wallet-list');
+  if (!data || !data.wallets.length) { el.innerHTML = '<div class="empty"><div class="ei">👛</div>No wallets yet</div>'; return; }
+  el.innerHTML = data.wallets.map(w => `
+    <div class="wallet-card">
+      <div class="wallet-icon">${WALLET_ICONS[iconIdx++ % WALLET_ICONS.length]}</div>
+      <div class="wallet-info">
+        <div class="wallet-label">${w.label || 'Unnamed Wallet'}</div>
+        <div class="wallet-addr">${w.address}</div>
+      </div>
+      <div class="wallet-bal">${Number(w.balance).toFixed(2)}<span>BPY coins</span></div>
+    </div>
+  `).join('');
+  iconIdx = 0;
+  refreshSendDropdowns(data.wallets);
+}
+
+async function createWallet() {
+  const label = document.getElementById('new-wallet-label').value.trim();
+  const data  = await apiFetch('/wallet/new', {
+    method: 'POST', body: JSON.stringify({ label }),
+  });
+  if (data) {
+    toast(`Wallet "${data.wallet.label || 'new'}" created!`, 'success');
+    document.getElementById('new-wallet-label').value = '';
+    loadWallets();
+  } else { toast('Failed to create wallet', 'error'); }
+}
+
+/* ── Send ──────────────────────────────────────────────── */
+async function loadSendPage() {
+  const data = await apiFetch('/wallets');
+  if (data) refreshSendDropdowns(data.wallets);
+  loadPending();
+}
+
+function refreshSendDropdowns(wallets) {
+  ['send-from', 'mine-addr'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Select wallet…</option>';
+    wallets.forEach(w => {
+      sel.innerHTML += `<option value="${w.address}">${w.label||'unknown'} (${Number(w.balance).toFixed(2)} BPY) — ${w.address.slice(0,12)}…</option>`;
+    });
+    if (prev) sel.value = prev;
+  });
+}
+
+async function sendTransaction() {
+  const sender    = document.getElementById('send-from').value;
+  const recipient = document.getElementById('send-to').value.trim();
+  const amount    = parseFloat(document.getElementById('send-amount').value);
+  const memo      = document.getElementById('send-memo').value.trim();
+  const resEl     = document.getElementById('send-result');
+
+  if (!sender || !recipient || !amount) {
+    toast('Fill in all required fields', 'error'); return;
+  }
+
+  const data = await apiFetch('/transactions/new', {
+    method: 'POST',
+    body: JSON.stringify({ sender, recipient, amount, memo }),
+  });
+
+  if (data) {
+    toast('Transaction added to mempool ✓', 'success');
+    resEl.innerHTML = `<div class="code-out">${JSON.stringify(data.transaction, null, 2)}</div>`;
+    document.getElementById('send-to').value = '';
+    document.getElementById('send-amount').value = '';
+    document.getElementById('send-memo').value = '';
+    loadPending();
+  } else { toast('Transaction failed — check balance', 'error'); }
+}
+
+async function loadPending() {
+  const data = await apiFetch('/transactions/pending');
+  const tbody = document.getElementById('pending-tbody');
+  if (!data || !data.transactions.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty"><div class="ei">📭</div>Mempool is empty</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.transactions.map(tx => `
+    <tr>
+      <td><span class="hash">${tx.sender === 'NETWORK' ? '🌐 NETWORK' : shortHash(tx.sender)}</span></td>
+      <td><span class="hash">${shortHash(tx.recipient)}</span></td>
+      <td style="color:var(--yellow);font-weight:600">${Number(tx.amount).toFixed(2)}</td>
+      <td style="color:var(--text2);font-size:12px">${tx.memo || '—'}</td>
+    </tr>
+  `).join('');
+}
+
+/* ── Boot ──────────────────────────────────────────────── */
+loadDashboard();
+setInterval(loadDashboard, 10000);   // auto-refresh every 10s
+</script>
+</body>
+</html>
